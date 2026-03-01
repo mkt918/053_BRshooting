@@ -20,6 +20,11 @@ class UIManager {
         this.finalRoundEl = document.getElementById("final-round");
         this.clearRoundEl = document.getElementById("clear-round-num");
         this.clearScoreEl = document.getElementById("clear-score-value");
+
+        this.targetConfirmScreen = document.getElementById("target-confirm-screen");
+        this.confirmTargetImg = document.getElementById("confirm-target-img");
+        this.confirmTargetName = document.getElementById("confirm-target-name");
+        this.targetOkBtn = document.getElementById("target-ok-btn");
     }
 
     showTitle() {
@@ -27,6 +32,7 @@ class UIManager {
         this.gameScreen.classList.add("hidden");
         this.gameOverScreen.classList.add("hidden");
         this.roundClearScreen.classList.add("hidden");
+        this.targetConfirmScreen.classList.add("hidden");
     }
 
     showGame() {
@@ -34,6 +40,7 @@ class UIManager {
         this.gameScreen.classList.remove("hidden");
         this.gameOverScreen.classList.add("hidden");
         this.roundClearScreen.classList.add("hidden");
+        this.targetConfirmScreen.classList.add("hidden");
     }
 
     showGameOver(score, round) {
@@ -62,6 +69,22 @@ class UIManager {
             this.roundClearScreen.classList.add("hidden");
             onClose();
         }, 2000);
+    }
+
+    showTargetConfirm(ice, onConfirm) {
+        this.targetConfirmScreen.classList.remove("hidden");
+        if (this.confirmTargetImg) this.confirmTargetImg.src = ice.imagePath;
+        if (this.confirmTargetName) this.confirmTargetName.textContent = ice.name;
+
+        // OKボタンのイベントリセットとバインド
+        const newBtn = this.targetOkBtn.cloneNode(true);
+        this.targetOkBtn.parentNode.replaceChild(newBtn, this.targetOkBtn);
+        this.targetOkBtn = newBtn;
+
+        this.targetOkBtn.addEventListener("click", () => {
+            this.targetConfirmScreen.classList.add("hidden");
+            onConfirm();
+        });
     }
 
     updateScore(score) {

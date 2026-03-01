@@ -279,8 +279,6 @@ class GameEngine {
         // 1セット内の状態管理
         this.currentSetActive = false;
         this.setDestroyCount = 0; // そのセット内で撃たれた間違いアイスの数
-
-        this._selectTarget();
     }
 
     _selectTarget() {
@@ -314,7 +312,8 @@ class GameEngine {
     start() {
         this.running = true;
         this.lastTime = performance.now();
-        this.spawnTimer = this.spawnInterval; // すぐスポーンするように
+        // 初回スタート時、ターゲット決定とモーダル表示に移行
+        this._prepareNextSet();
         requestAnimationFrame((t) => this.loop(t));
     }
 
@@ -326,9 +325,13 @@ class GameEngine {
         if (!this.running) return;
         const dt = timestamp - (this.lastTime || timestamp);
         this.lastTime = timestamp;
-        this.spawnTimer += dt;
 
-        this.update(dt);
+        // paused中は更新しない
+        if (!this.paused) {
+            this.spawnTimer += dt;
+            this.update(dt);
+        }
+
         this.draw();
         requestAnimationFrame((t) => this.loop(t));
     }
@@ -370,10 +373,6 @@ class GameEngine {
                         if (this.setDestroyCount >= 2) {
                             this._endCurrentSet();
                         }
-
-                        if (this.roundDestroyCount >= this.roundTotalToDestroy) {
-                            this._roundClear();
-                        }
                     }
                     this.ui.updateScore(this.score);
                     this.ui.updateLives(this.lives);
@@ -399,6 +398,29 @@ class GameEngine {
 
         this.iceObjects = this.iceObjects.filter(o => !o.destroyed);
         this.beams = this.beams.filter(b => !b.done);
+    }
+
+    _prepareNextSet() {
+        // 次のセット開始前に停止状態にする
+        this.paused = true;
+        this.currentSetActive = false;
+
+        // ラウンドクリア判定をここで行う（セット間）
+        if (this.roundDestroyCount >= this.roundTotalToDestroy) {
+            // ラウンドクリアなら先にクリア表示を出す
+            this._roundClear();
+            return;
+        }
+
+        // 新しいターゲットを抽選
+        this._selectTarget();
+
+        // ターゲット確認UIを表示
+        this.ui.showTargetConfirm(this.targetIce, () => {
+            // OKが押されたら再開
+            this.paused = false;
+            this.spawnTimer = this.spawnInterval; // すぐスポーン
+        });
     }
 
     _spawnSet() {
@@ -434,11 +456,16 @@ class GameEngine {
 
     _endCurrentSet() {
         this.currentSetActive = false;
-        this.spawnTimer = 0; // すぐに次のセットのディレイ計測を開始
-        // 念のため画面上の残存アイスを一掃し、次のセットを待つ
         this.iceObjects.forEach(obj => {
             if (!obj.exploding) obj.destroyed = true;
         });
+
+        if (this.lives > 0) {
+            // ゲームオーバーでなければ一定時間後に次の準備へ
+            setTimeout(() => {
+                this._prepareNextSet();
+            }, 600);
+        }
     }
 
     _roundClear() {
@@ -452,9 +479,10 @@ class GameEngine {
         );
         this.iceObjects = [];
         this.beams = [];
-        this._selectTarget(); // 次のラウンド用に新しいターゲットを設定
+
+        // ラウンドクリア演出が終わったら次のターゲット準備へ
         this.ui.showRoundClear(this.round - 1, this.score, () => {
-            this.spawnTimer = this.spawnInterval;
+            this._prepareNextSet();
         });
     }
 
