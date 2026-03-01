@@ -274,6 +274,7 @@ class GameEngine {
 
         // 1セット内の状態管理
         this.currentSetActive = false;
+        this.waitingForNextSet = false; // モーダルまでの待機中フラグ
         this.setCount = 0; // セット数（難易度上昇用）
         this.setDestroyCount = 0; // そのセット内で撃たれた間違いアイスの数
     }
@@ -334,8 +335,8 @@ class GameEngine {
     }
 
     update(dt) {
-        // 現在のセットのアイスがない、かつディレイが経過したら次のセットをスポーン
-        if (!this.currentSetActive && this.spawnTimer >= this.spawnInterval) {
+        // 待機中でなければスポーンを許可
+        if (!this.currentSetActive && !this.waitingForNextSet && this.spawnTimer >= this.spawnInterval) {
             this.spawnTimer = 0;
             this._spawnSet();
         }
@@ -363,7 +364,7 @@ class GameEngine {
                         obj.startExplode();
 
                         // セット内の間違い2つを撃ち落としたらセット終了
-                        if (this.setDestroyCount >= 2) {
+                        if (this.setDestroyCount >= 2 && !this.waitingForNextSet) {
                             this._endCurrentSet(false);
                         }
                     }
@@ -389,7 +390,7 @@ class GameEngine {
         });
 
         // セット中のアイスがすべて消えた場合（破壊された、または逃した）
-        if (this.currentSetActive && allOffScreen) {
+        if (this.currentSetActive && !this.waitingForNextSet && allOffScreen) {
             this._endCurrentSet(false);
         }
 
@@ -401,6 +402,7 @@ class GameEngine {
         // 次のセット開始前に停止状態にする
         this.paused = true;
         this.currentSetActive = false;
+        this.waitingForNextSet = false;
 
         // スピード上昇 (一定セットごと)
         this.setCount++;
@@ -458,6 +460,7 @@ class GameEngine {
         });
 
         if (!isGameOver) {
+            this.waitingForNextSet = true;
             // ゲームオーバーでなければ一定時間後に次の準備へ
             setTimeout(() => {
                 if (this.running) this._prepareNextSet();
