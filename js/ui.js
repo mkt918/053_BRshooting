@@ -11,18 +11,12 @@ class UIManager {
         this.roundClearScreen = document.getElementById("round-clear-screen");
 
         this.scoreEl = document.getElementById("score-value");
-        this.livesEl = document.getElementById("lives-display");
-        this.roundEl = document.getElementById("round-value");
         this.targetNameEl = document.getElementById("target-name");
         this.targetEmojiEl = document.getElementById("target-emoji");
 
         this.finalScoreEl = document.getElementById("final-score");
-        this.finalRoundEl = document.getElementById("final-round");
-        this.clearRoundEl = document.getElementById("clear-round-num");
-        this.clearScoreEl = document.getElementById("clear-score-value");
 
         this.targetConfirmScreen = document.getElementById("target-confirm-screen");
-        this.confirmTargetImg = document.getElementById("confirm-target-img");
         this.confirmTargetName = document.getElementById("confirm-target-name");
         this.targetOkBtn = document.getElementById("target-ok-btn");
     }
@@ -43,11 +37,11 @@ class UIManager {
         this.targetConfirmScreen.classList.add("hidden");
     }
 
-    showGameOver(score, round) {
+    showGameOver(score) {
         this.gameOverScreen.classList.remove("hidden");
         this.roundClearScreen.classList.add("hidden");
         if (this.finalScoreEl) this.finalScoreEl.textContent = score.toLocaleString();
-        if (this.finalRoundEl) this.finalRoundEl.textContent = round;
+
         // ハイスコア
         const hs = localStorage.getItem("brShootingHiScore") || 0;
         if (score > hs) {
@@ -73,7 +67,6 @@ class UIManager {
 
     showTargetConfirm(ice, onConfirm) {
         this.targetConfirmScreen.classList.remove("hidden");
-        if (this.confirmTargetImg) this.confirmTargetImg.src = ice.imagePath;
         if (this.confirmTargetName) this.confirmTargetName.textContent = ice.name;
 
         // OKボタンのイベントリセットとバインド
@@ -89,16 +82,6 @@ class UIManager {
 
     updateScore(score) {
         if (this.scoreEl) this.scoreEl.textContent = score.toLocaleString();
-    }
-
-    updateLives(lives) {
-        if (this.livesEl) {
-            this.livesEl.textContent = "❤️".repeat(Math.max(0, lives));
-        }
-    }
-
-    updateRound(round) {
-        if (this.roundEl) this.roundEl.textContent = round;
     }
 
     updateTarget(ice) {

@@ -302,17 +302,12 @@ const GAME_CONFIG = {
   // ゲームの基本設定
   numColumns: 3,           // 同時に落下する列数
   baseFallSpeed: 1.2,      // 基本落下速度 (px/frame)
-  speedIncrement: 0.3,     // ラウンドクリアごとの速度上昇
+  speedIncrement: 0.3,     // セットクリアごとの速度上昇
   maxFallSpeed: 5.0,       // 最大落下速度
   spawnIntervalMs: 2000,   // アイスのスポーン間隔 (ms)
 
   // スコア
   hitScore: 150,           // 正しいアイスを撃った時の得点
-  wrongPenalty: -200,      // 指定アイスを撃った時のペナルティ
-  survivePenalty: -50,     // アイスを画面下まで逃した時のペナルティ（間違いが逃げた場合は関係なし）
-
-  // ライフ
-  lives: 3,
 
   // Canvas サイズ（CSSでレスポンシブ対応）
   canvasWidth: 800,
@@ -325,7 +320,4 @@ const GAME_CONFIG = {
   // ビームの設定
   beamSpeed: 18,
   beamWidth: 6,
-
-  // ラウンドあたりに撃ち落とすアイスの数
-  targetsPerRound: 6,      // 1ラウンドで撃ち落とす「間違いアイス」の総数
 };

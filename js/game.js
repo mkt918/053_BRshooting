@@ -258,14 +258,10 @@ class GameEngine {
 
     reset() {
         this.score = 0;
-        this.lives = GAME_CONFIG.lives;
-        this.round = 1;
         this.currentFallSpeed = GAME_CONFIG.baseFallSpeed;
         this.iceObjects = [];
         this.beams = [];
         this.targetIce = null;
-        this.roundDestroyCount = 0;
-        this.roundTotalToDestroy = GAME_CONFIG.targetsPerRound;
         this.spawnTimer = 0;
         // セット間隔のディレイ（セット制になったので間隔を持たせる）
         this.spawnInterval = 500;
@@ -278,6 +274,7 @@ class GameEngine {
 
         // 1セット内の状態管理
         this.currentSetActive = false;
+        this.setCount = 0; // セット数（難易度上昇用）
         this.setDestroyCount = 0; // そのセット内で撃たれた間違いアイスの数
     }
 
@@ -353,29 +350,24 @@ class GameEngine {
                 if (obj.contains(beam.x, beam.y)) {
                     beam.done = true;
                     if (obj.isTarget) {
-                        this.score += GAME_CONFIG.wrongPenalty;
-                        this.lives--;
-                        this._showFlash(`❌ ${obj.iceCream.name} は残すアイスです！ -${Math.abs(GAME_CONFIG.wrongPenalty)}点`, "#E53935");
+                        this._showFlash(`💀 ${obj.iceCream.name} は残すアイスでした！`, "#E53935");
                         obj.startExplode();
 
-                        // 正解を撃ったら、このセットは終了扱いにする（ペナルティを受けたため）
-                        this._endCurrentSet();
-
-                        if (this.lives <= 0) this._gameOver();
+                        // 正解を撃ったら即ゲームオーバー
+                        this._endCurrentSet(true);
+                        this._gameOver();
                     } else {
                         this.score += GAME_CONFIG.hitScore;
-                        this.roundDestroyCount++;
                         this.setDestroyCount++;
                         this._showFlash(`✅ +${GAME_CONFIG.hitScore}点！`, "#43A047");
                         obj.startExplode();
 
                         // セット内の間違い2つを撃ち落としたらセット終了
                         if (this.setDestroyCount >= 2) {
-                            this._endCurrentSet();
+                            this._endCurrentSet(false);
                         }
                     }
                     this.ui.updateScore(this.score);
-                    this.ui.updateLives(this.lives);
                 }
             });
         });
@@ -385,6 +377,11 @@ class GameEngine {
         this.iceObjects.forEach(obj => {
             if (!obj.exploding && obj.isOffScreen(this.canvas.height)) {
                 obj.destroyed = true;
+                if (!obj.isTarget) {
+                    // 間違ったアイスを撃ち逃した場合
+                    this._showFlash("💀 間違いアイスを逃しました！ゲームオーバー", "#E53935");
+                    this._gameOver();
+                }
             }
             if (!obj.destroyed) {
                 allOffScreen = false;
@@ -393,7 +390,7 @@ class GameEngine {
 
         // セット中のアイスがすべて消えた場合（破壊された、または逃した）
         if (this.currentSetActive && allOffScreen) {
-            this._endCurrentSet();
+            this._endCurrentSet(false);
         }
 
         this.iceObjects = this.iceObjects.filter(o => !o.destroyed);
@@ -405,12 +402,12 @@ class GameEngine {
         this.paused = true;
         this.currentSetActive = false;
 
-        // ラウンドクリア判定をここで行う（セット間）
-        if (this.roundDestroyCount >= this.roundTotalToDestroy) {
-            // ラウンドクリアなら先にクリア表示を出す
-            this._roundClear();
-            return;
-        }
+        // スピード上昇 (一定セットごと)
+        this.setCount++;
+        this.currentFallSpeed = Math.min(
+            GAME_CONFIG.baseFallSpeed + Math.floor(this.setCount / 5) * GAME_CONFIG.speedIncrement,
+            GAME_CONFIG.maxFallSpeed
+        );
 
         // 新しいターゲットを抽選
         this._selectTarget();
@@ -454,42 +451,24 @@ class GameEngine {
         }
     }
 
-    _endCurrentSet() {
+    _endCurrentSet(isGameOver = false) {
         this.currentSetActive = false;
         this.iceObjects.forEach(obj => {
             if (!obj.exploding) obj.destroyed = true;
         });
 
-        if (this.lives > 0) {
+        if (!isGameOver) {
             // ゲームオーバーでなければ一定時間後に次の準備へ
             setTimeout(() => {
-                this._prepareNextSet();
+                if (this.running) this._prepareNextSet();
             }, 600);
         }
-    }
-
-    _roundClear() {
-        this.round++;
-        this.roundDestroyCount = 0;
-        this.currentSetActive = false; // セット終了
-
-        this.currentFallSpeed = Math.min(
-            GAME_CONFIG.baseFallSpeed + (this.round - 1) * GAME_CONFIG.speedIncrement,
-            GAME_CONFIG.maxFallSpeed
-        );
-        this.iceObjects = [];
-        this.beams = [];
-
-        // ラウンドクリア演出が終わったら次のターゲット準備へ
-        this.ui.showRoundClear(this.round - 1, this.score, () => {
-            this._prepareNextSet();
-        });
     }
 
     _gameOver() {
         this.running = false;
         setTimeout(() => {
-            this.ui.showGameOver(this.score, this.round);
+            this.ui.showGameOver(this.score);
         }, 800);
     }
 

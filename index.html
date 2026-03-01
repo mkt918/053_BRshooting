@@ -299,9 +299,8 @@
         <div class="rule-item"><span class="rule-icon">🔫</span><span>カーソルで狙ってクリック！ 指定以外のアイスを撃ち落とせ</span></div>
         <div class="rule-item"><span class="rule-icon">✅</span><span>正解を撃ち落とすと <strong
               class="text-green-300">+150点</strong></span></div>
-        <div class="rule-item"><span class="rule-icon">❌</span><span>指定アイスを撃つと <strong
-              class="text-red-300">-200点＆ライフ-1</strong></span></div>
-        <div class="rule-item"><span class="rule-icon">❤️</span><span>ライフが 0 になるとゲームオーバー</span></div>
+        <div class="rule-item"><span class="rule-icon">❌</span><span>指定アイスを撃つか、撃ち逃すと <strong
+              class="text-red-300">即ゲームオーバー</strong></span></div>
       </div>
 
       <div class="hi-score-display">
@@ -317,10 +316,6 @@
   <!-- ===== HUD ===== -->
   <div id="hud" class="hidden">
     <div class="hud-block">
-      <div>
-        <div class="label">ROUND</div>
-        <div class="value" id="round-value">1</div>
-      </div>
     </div>
 
     <!-- ターゲット表示（中央） -->
@@ -333,7 +328,6 @@
     </div>
 
     <div class="hud-block gap-4">
-      <div id="lives-display">❤️❤️❤️</div>
       <div>
         <div class="label">SCORE</div>
         <div class="value" id="score-value">0</div>
@@ -362,7 +356,6 @@
       <h2>💀 ゲームオーバー</h2>
       <div class="sub">スコア</div>
       <div class="big-score" id="final-score">0</div>
-      <div class="mt-2 text-white/50 text-sm">ラウンド <span id="final-round">1</span> まで到達</div>
 
       <div class="mt-4 bg-white/5 rounded-xl p-3">
         <div class="text-xs text-white/40" id="hi-score-label">ハイスコア</div>
@@ -381,10 +374,7 @@
     style="background: rgba(26,5,51,0.6); backdrop-filter: blur(4px);">
     <div class="glass-card p-6 flex flex-col items-center gap-4 text-center max-w-sm mx-4">
       <div class="text-white/80 font-bold text-sm">次の残すアイスはこれ！</div>
-      <div class="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center p-2">
-        <img id="confirm-target-img" src="" alt="target" class="max-w-full max-h-full object-contain drop-shadow-lg" />
-      </div>
-      <div id="confirm-target-name" class="text-xl font-black text-pink-300"></div>
+      <div id="confirm-target-name" class="text-3xl font-black text-pink-300 py-4"></div>
       <button id="target-ok-btn" class="btn-primary w-full mt-2 py-3 text-lg">OK (開始)</button>
     </div>
   </div>
@@ -410,8 +400,6 @@
       ui.showGame();
       document.getElementById("hud").classList.remove("hidden");
       ui.updateScore(0);
-      ui.updateLives(GAME_CONFIG.lives);
-      ui.updateRound(1);
       engine.start();
     }
 
