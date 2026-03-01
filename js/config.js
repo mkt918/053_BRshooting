@@ -301,10 +301,10 @@ const ICE_CREAMS = [
 const GAME_CONFIG = {
   // ゲームの基本設定
   numColumns: 3,           // 同時に落下する列数
-  baseFallSpeed: 1.2,      // 基本落下速度 (px/frame)
+  baseFallSpeed: 0.9,      // 基本落下速度 (px/frame) - 序盤はゆっくり
   speedIncrement: 0.3,     // セットクリアごとの速度上昇
   maxFallSpeed: 5.0,       // 最大落下速度
-  spawnIntervalMs: 2000,   // アイスのスポーン間隔 (ms)
+  spawnIntervalMs: 2000,   // (未使用) アイスのスポーン間隔 (ms)
 
   // スコア
   hitScore: 150,           // 正しいアイスを撃った時の得点
@@ -314,8 +314,8 @@ const GAME_CONFIG = {
   canvasHeight: 550,
 
   // アイスの描画サイズ
-  iceWidth: 90,
-  iceHeight: 110,
+  iceWidth: 70,
+  iceHeight: 85,
 
   // ビームの設定
   beamSpeed: 18,

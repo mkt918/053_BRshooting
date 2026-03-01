@@ -263,8 +263,8 @@ class GameEngine {
         this.beams = [];
         this.targetIce = null;
         this.spawnTimer = 0;
-        // セット間隔のディレイ（セット制になったので間隔を持たせる）
-        this.spawnInterval = 500;
+        // セット間隔のディレイ（長めに設定）
+        this.spawnInterval = 1000;
         this.lastTime = null;
         this.running = false;
         this.paused = false;
