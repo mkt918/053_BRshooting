@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🍦 BR シューティング - サーティワンアイスクリーム</title>
+  <meta name="description" content="サーティワンアイスクリームをテーマにしたシューティングゲーム。指定されたアイス以外を撃って壊そう！" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --pink: #FF69B4;
+      --purple: #7B1FA2;
+      --dark: #1a0533;
+    }
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: var(--dark);
+      cursor: none; /* カスタムカーソル */
+      overflow: hidden;
+      height: 100dvh;
+    }
+    #game-canvas {
+      cursor: none;
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+    }
+    /* =====================
+       タイトル画面
+    ======================== */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+    }
+    .glass-card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(16px);
+      border: 1.5px solid rgba(255,255,255,0.18);
+      border-radius: 24px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #FF69B4, #7B1FA2);
+      color: white;
+      font-weight: 900;
+      font-size: 1.2rem;
+      padding: 14px 48px;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 24px rgba(255,105,180,0.5);
+      transition: transform 0.1s, box-shadow 0.1s;
+      letter-spacing: 0.05em;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 8px 32px rgba(255,105,180,0.7);
+    }
+    .btn-primary:active {
+      transform: scale(0.97);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.12);
+      color: white;
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 10px 32px;
+      border-radius: 50px;
+      border: 1.5px solid rgba(255,255,255,0.25);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.22);
+    }
+    /* HUD */
+    #hud {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 20px;
+      background: rgba(26,5,51,0.82);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255,105,180,0.25);
+      z-index: 10;
+      pointer-events: none;
+    }
+    #hud .hud-block {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #hud .label {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    #hud .value {
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 900;
+      font-family: 'Orbitron', sans-serif;
+    }
+    /* ターゲットボックス */
+    #target-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 14px 4px 10px;
+      border-radius: 50px;
+      border: 2.5px solid #FF69B4;
+      background: #FFE0EA;
+      font-weight: 900;
+      color: #880E4F;
+      font-size: 0.95rem;
+      transition: border-color 0.3s, background 0.3s, color 0.3s;
+    }
+    #target-box .emoji {
+      font-size: 1.4rem;
+    }
+    @keyframes pulseAnim {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.12); }
+      60% { transform: scale(0.97); }
+      100% { transform: scale(1); }
+    }
+    .pulse-anim { animation: pulseAnim 0.4s ease-out; }
+
+    /* ラウンドクリア・ゲームオーバー */
+    #round-clear-screen, #gameover-screen {
+      background: rgba(26,5,51,0.75);
+      backdrop-filter: blur(12px);
+    }
+    .result-card {
+      background: rgba(255,255,255,0.07);
+      border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 24px;
+      padding: 36px 48px;
+      text-align: center;
+      color: white;
+      min-width: 320px;
+    }
+    .result-card h2 {
+      font-size: 2.5rem;
+      font-weight: 900;
+      margin-bottom: 16px;
+    }
+    .result-card .big-score {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 3rem;
+      color: #FF69B4;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+    }
+    .result-card .sub {
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+    }
+
+    /* タイトル */
+    #title-screen {
+      background: linear-gradient(135deg, #1a0533 0%, #2d0a5e 60%, #1a0533 100%);
+    }
+    .title-logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(1.8rem, 5vw, 3.2rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, #FF69B4, #CE93D8, #FFD700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.04em;
+      text-align: center;
+    }
+    .title-sub {
+      color: rgba(255,255,255,0.7);
+      font-size: 1rem;
+      text-align: center;
+    }
+    .rule-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      color: rgba(255,255,255,0.85);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+    .rule-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .hi-score-display {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.4);
+      text-align: center;
+    }
+    .hi-score-display span {
+      color: #FFD700;
+      font-weight: 900;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ゲーム画面ラッパー */
+    #game-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-top: 56px; /* HUDの高さ分 */
+    }
+    #game-screen canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body class="select-none">
+
+  <!-- ===== タイトル画面 ===== -->
+  <div id="title-screen" class="screen">
+    <div class="glass-card p-8 max-w-md w-full mx-4 flex flex-col items-center gap-6">
+      <div>
+        <div class="text-5xl text-center mb-2">🍦🍓🍫</div>
+        <div class="title-logo">BR SHOOTING</div>
+        <div class="title-sub mt-1">サーティワン アイスクリーム シューティング</div>
+      </div>
+
+      <!-- ゲームルール -->
+      <div class="w-full bg-white/5 rounded-2xl p-4 flex flex-col gap-3">
+        <div class="text-white/60 text-xs uppercase tracking-widest mb-1">ゲームのルール</div>
+        <div class="rule-item"><span class="rule-icon">🎯</span><span>画面上のアイスのうち、<strong class="text-pink-300">残すアイス</strong>が指定される</span></div>
+        <div class="rule-item"><span class="rule-icon">🔫</span><span>カーソルで狙ってクリック！ 指定以外のアイスを撃ち落とせ</span></div>
+        <div class="rule-item"><span class="rule-icon">✅</span><span>正解を撃ち落とすと <strong class="text-green-300">+150点</strong></span></div>
+        <div class="rule-item"><span class="rule-icon">❌</span><span>指定アイスを撃つと <strong class="text-red-300">-200点＆ライフ-1</strong></span></div>
+        <div class="rule-item"><span class="rule-icon">❤️</span><span>ライフが 0 になるとゲームオーバー</span></div>
+      </div>
+
+      <div class="hi-score-display">
+        BEST SCORE: <span id="title-hi-score">0</span>
+      </div>
+
+      <button id="start-btn" class="btn-primary w-full">
+        🍦 ゲームスタート！
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== HUD ===== -->
+  <div id="hud" class="hidden">
+    <div class="hud-block">
+      <div>
+        <div class="label">ROUND</div>
+        <div class="value" id="round-value">1</div>
+      </div>
+    </div>
+
+    <!-- ターゲット表示（中央） -->
+    <div class="flex items-center gap-2">
+      <div class="label text-white/50">残すアイス：</div>
+      <div id="target-box">
+        <span id="target-emoji" class="emoji">🍦</span>
+        <span id="target-name">バニラ</span>
+      </div>
+    </div>
+
+    <div class="hud-block gap-4">
+      <div id="lives-display">❤️❤️❤️</div>
+      <div>
+        <div class="label">SCORE</div>
+        <div class="value" id="score-value">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ゲーム画面 ===== -->
+  <div id="game-screen" class="hidden">
+    <canvas id="game-canvas" width="800" height="550"></canvas>
+  </div>
+
+  <!-- ===== ラウンドクリア画面 ===== -->
+  <div id="round-clear-screen" class="screen hidden">
+    <div class="result-card">
+      <h2>🎉 ラウンド <span id="clear-round-num">1</span> クリア！</h2>
+      <div class="sub">現在のスコア</div>
+      <div class="big-score" id="clear-score-value">0</div>
+      <div class="mt-4 text-white/50 text-sm">次のラウンドへ…</div>
+    </div>
+  </div>
+
+  <!-- ===== ゲームオーバー画面 ===== -->
+  <div id="gameover-screen" class="screen hidden">
+    <div class="result-card">
+      <h2>💀 ゲームオーバー</h2>
+      <div class="sub">スコア</div>
+      <div class="big-score" id="final-score">0</div>
+      <div class="mt-2 text-white/50 text-sm">ラウンド <span id="final-round">1</span> まで到達</div>
+
+      <div class="mt-4 bg-white/5 rounded-xl p-3">
+        <div class="text-xs text-white/40" id="hi-score-label">ハイスコア</div>
+        <div class="font-black text-yellow-300 text-xl" id="hi-score-value">0</div>
+      </div>
+
+      <div class="mt-6 flex gap-3 justify-center">
+        <button id="retry-btn" class="btn-primary">🔄 もう一度</button>
+        <button id="title-btn" class="btn-secondary">🏠 タイトルへ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- スクリプト読み込み -->
+  <script src="js/config.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    // ===== メインエントリーポイント =====
+    const ui = new UIManager();
+    let engine = null;
+
+    // タイトルのハイスコア表示
+    const hs = localStorage.getItem("brShootingHiScore") || 0;
+    document.getElementById("title-hi-score").textContent = Number(hs).toLocaleString();
+
+    function startGame() {
+      if (engine) engine.stop();
+      const canvas = document.getElementById("game-canvas");
+      engine = new GameEngine(canvas, ui);
+      preloadImages();
+      ui.showGame();
+      document.getElementById("hud").classList.remove("hidden");
+      ui.updateScore(0);
+      ui.updateLives(GAME_CONFIG.lives);
+      ui.updateRound(1);
+      engine.start();
+    }
+
+    document.getElementById("start-btn").addEventListener("click", startGame);
+
+    document.getElementById("retry-btn").addEventListener("click", () => {
+      document.getElementById("gameover-screen").classList.add("hidden");
+      startGame();
+    });
+
+    document.getElementById("title-btn").addEventListener("click", () => {
+      if (engine) engine.stop();
+      engine = null;
+      document.getElementById("gameover-screen").classList.add("hidden");
+      document.getElementById("hud").classList.add("hidden");
+      // ハイスコア更新
+      const newHs = localStorage.getItem("brShootingHiScore") || 0;
+      document.getElementById("title-hi-score").textContent = Number(newHs).toLocaleString();
+      ui.showTitle();
+    });
+
+    // 初期表示
+    ui.showTitle();
+  </script>
+</body>
+</html>
