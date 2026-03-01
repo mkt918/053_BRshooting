@@ -72,13 +72,23 @@ class IceCreamObject {
             this.particles.forEach(p => p.draw(ctx));
         }
 
-        // アイスコーン型の描画（imagePath なしの場合）
         if (!this.iceCream.imagePath) {
             this._drawPlaceholder(ctx);
         } else {
             const img = imageCache[this.iceCream.imagePath];
             if (img && img.complete) {
-                ctx.drawImage(img, -this.width / 2, -this.height / 2, this.width, this.height);
+                // アスペクト比を維持して中央に配置
+                const imgRatio = img.width / img.height;
+                const boxRatio = this.width / this.height;
+                let drawW = this.width;
+                let drawH = this.height;
+
+                if (imgRatio > boxRatio) {
+                    drawH = this.width / imgRatio;
+                } else {
+                    drawW = this.height * imgRatio;
+                }
+                ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
             } else {
                 this._drawPlaceholder(ctx);
             }
@@ -93,7 +103,6 @@ class IceCreamObject {
         const hw = w / 2;
         const hh = h / 2;
 
-        // コーン（下の三角形）
         ctx.beginPath();
         ctx.moveTo(-hw * 0.5, hh * 0.1);
         ctx.lineTo(hw * 0.5, hh * 0.1);
@@ -101,12 +110,10 @@ class IceCreamObject {
         ctx.closePath();
         ctx.fillStyle = "#D2B48C";
         ctx.fill();
-        // コーンの模様
         ctx.strokeStyle = "#A0785A";
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // コーンの格子模様
         ctx.beginPath();
         ctx.moveTo(-hw * 0.3, hh * 0.1);
         ctx.lineTo(hw * 0.08, hh);
@@ -116,7 +123,6 @@ class IceCreamObject {
         ctx.lineTo(-hw * 0.08, hh);
         ctx.stroke();
 
-        // アイスクリーム本体（円）
         const r = hw * 0.9;
         ctx.beginPath();
         ctx.arc(0, -hh * 0.15, r, 0, Math.PI * 2);
@@ -130,13 +136,11 @@ class IceCreamObject {
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // 絵文字
         ctx.font = `${hw * 0.8}px serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(this.iceCream.emoji, 0, -hh * 0.15);
 
-        // アイス名ラベル
         ctx.font = `bold ${hw * 0.28}px "Noto Sans JP", sans-serif`;
         ctx.fillStyle = this.iceCream.textColor;
         ctx.textAlign = "center";
@@ -171,7 +175,6 @@ class Particle {
         ctx.globalAlpha = this.alpha;
         ctx.beginPath();
         ctx.arc(this.x - (this.x), this.y - (this.y), this.r, 0, Math.PI * 2);
-        // 親のtranslateから相対座標に直す必要があるため絶対座標で描く
         ctx.restore();
         ctx.save();
         ctx.globalAlpha = this.alpha;
@@ -185,7 +188,6 @@ class Particle {
 
 class Beam {
     constructor(startX, startY, targetX, targetY) {
-        // カーソル位置から上方向（画面上端）へ発射
         this.x = startX;
         this.y = startY;
         const dx = targetX - startX;
@@ -222,7 +224,6 @@ class Beam {
             ctx.shadowBlur = 12;
             ctx.stroke();
         }
-        // 先端の光
         ctx.beginPath();
         ctx.arc(this.x, this.y, GAME_CONFIG.beamWidth, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
@@ -233,7 +234,6 @@ class Beam {
     }
 }
 
-// 画像キャッシュ
 const imageCache = {};
 
 function preloadImages() {
@@ -264,10 +264,11 @@ class GameEngine {
         this.iceObjects = [];
         this.beams = [];
         this.targetIce = null;
-        this.roundDestroyCount = 0; // 今ラウンドで撃ち落とした数
+        this.roundDestroyCount = 0;
         this.roundTotalToDestroy = GAME_CONFIG.targetsPerRound;
         this.spawnTimer = 0;
-        this.spawnInterval = GAME_CONFIG.spawnIntervalMs;
+        // セット間隔のディレイ（セット制になったので間隔を持たせる）
+        this.spawnInterval = 500;
         this.lastTime = null;
         this.running = false;
         this.paused = false;
@@ -275,15 +276,15 @@ class GameEngine {
         this.mouseY = 300;
         this.flashMessage = null;
 
-        // ラウンド開始時のターゲットを選ぶ
+        // 1セット内の状態管理
+        this.currentSetActive = false;
+        this.setDestroyCount = 0; // そのセット内で撃たれた間違いアイスの数
+
         this._selectTarget();
     }
 
     _selectTarget() {
-        // ランダムに3種類選択し、そのうち1つを「残す」ターゲットにする
-        const shuffled = [...ICE_CREAMS].sort(() => Math.random() - 0.5);
-        this.roundIceTypes = shuffled.slice(0, GAME_CONFIG.numColumns);
-        this.targetIce = this.roundIceTypes[Math.floor(Math.random() * this.roundIceTypes.length)];
+        this.targetIce = ICE_CREAMS[Math.floor(Math.random() * ICE_CREAMS.length)];
         this.ui.updateTarget(this.targetIce);
     }
 
@@ -304,7 +305,6 @@ class GameEngine {
             const mx = (e.clientX - rect.left) * scaleX;
             const my = (e.clientY - rect.top) * scaleY;
 
-            // ビームをカーソル位置からクリック位置方向へ発射
             const beamStartX = mx;
             const beamStartY = this.canvas.height - 40;
             this.beams.push(new Beam(beamStartX, beamStartY, mx, my));
@@ -314,7 +314,7 @@ class GameEngine {
     start() {
         this.running = true;
         this.lastTime = performance.now();
-        this.spawnTimer = 0;
+        this.spawnTimer = this.spawnInterval; // すぐスポーンするように
         requestAnimationFrame((t) => this.loop(t));
     }
 
@@ -334,19 +334,15 @@ class GameEngine {
     }
 
     update(dt) {
-        // スポーン
-        if (this.spawnTimer >= this.spawnInterval) {
+        // 現在のセットのアイスがない、かつディレイが経過したら次のセットをスポーン
+        if (!this.currentSetActive && this.spawnTimer >= this.spawnInterval) {
             this.spawnTimer = 0;
-            this._spawnRow();
+            this._spawnSet();
         }
 
-        // アイスの更新
         this.iceObjects.forEach(obj => obj.update(this.currentFallSpeed));
-
-        // ビームの更新
         this.beams.forEach(beam => beam.update());
 
-        // ビームとアイスの当たり判定
         this.beams.forEach(beam => {
             if (beam.done) return;
             this.iceObjects.forEach(obj => {
@@ -354,18 +350,27 @@ class GameEngine {
                 if (obj.contains(beam.x, beam.y)) {
                     beam.done = true;
                     if (obj.isTarget) {
-                        // 正解アイスを撃った → ペナルティ
                         this.score += GAME_CONFIG.wrongPenalty;
                         this.lives--;
                         this._showFlash(`❌ ${obj.iceCream.name} は残すアイスです！ -${Math.abs(GAME_CONFIG.wrongPenalty)}点`, "#E53935");
                         obj.startExplode();
+
+                        // 正解を撃ったら、このセットは終了扱いにする（ペナルティを受けたため）
+                        this._endCurrentSet();
+
                         if (this.lives <= 0) this._gameOver();
                     } else {
-                        // 間違いアイスを撃った → 得点
                         this.score += GAME_CONFIG.hitScore;
                         this.roundDestroyCount++;
+                        this.setDestroyCount++;
                         this._showFlash(`✅ +${GAME_CONFIG.hitScore}点！`, "#43A047");
                         obj.startExplode();
+
+                        // セット内の間違い2つを撃ち落としたらセット終了
+                        if (this.setDestroyCount >= 2) {
+                            this._endCurrentSet();
+                        }
+
                         if (this.roundDestroyCount >= this.roundTotalToDestroy) {
                             this._roundClear();
                         }
@@ -376,52 +381,80 @@ class GameEngine {
             });
         });
 
-        // 画面外に出たアイスを削除
+        // 画面外処理
+        let allOffScreen = true;
         this.iceObjects.forEach(obj => {
             if (!obj.exploding && obj.isOffScreen(this.canvas.height)) {
-                // 落ちたのがターゲットアイスなら消えても問題なし、間違いアイスなら逃した（ペナルティなし）
                 obj.destroyed = true;
+            }
+            if (!obj.destroyed) {
+                allOffScreen = false;
             }
         });
 
-        // クリーンアップ
+        // セット中のアイスがすべて消えた場合（破壊された、または逃した）
+        if (this.currentSetActive && allOffScreen) {
+            this._endCurrentSet();
+        }
+
         this.iceObjects = this.iceObjects.filter(o => !o.destroyed);
         this.beams = this.beams.filter(b => !b.done);
     }
 
-    _spawnRow() {
-        // 各列にランダムにアイスクリームを割り当てる
+    _spawnSet() {
+        this.currentSetActive = true;
+        this.setDestroyCount = 0;
+        this.iceObjects = []; // 古いものを確実にクリア
+
         const colWidth = this.canvas.width / GAME_CONFIG.numColumns;
         const margin = GAME_CONFIG.iceWidth * 0.3;
 
-        // 各列に1つずつスポーン（どのアイスか ランダム）
-        for (let col = 0; col < GAME_CONFIG.numColumns; col++) {
-            const ice = this.roundIceTypes[col % this.roundIceTypes.length];
-            // 時々シャッフルして違う種類も出る
-            const selectedIce = Math.random() > 0.4
-                ? this.roundIceTypes[col]
-                : this.roundIceTypes[Math.floor(Math.random() * this.roundIceTypes.length)];
+        // "残す"ターゲット1つと、それ以外のフレーバー2つを重複なしで選ぶ
+        let availableOthers = ICE_CREAMS.filter(ice => ice.id !== this.targetIce.id);
+        // シャッフル
+        availableOthers.sort(() => Math.random() - 0.5);
+        const setFlavors = [
+            this.targetIce,
+            availableOthers[0],
+            availableOthers[1]
+        ];
 
+        // 落下順（列の順番）もシャッフル
+        setFlavors.sort(() => Math.random() - 0.5);
+
+        for (let col = 0; col < 3; col++) {
+            const iceInfo = setFlavors[col];
             const x = colWidth * col + margin / 2 + Math.random() * (colWidth - GAME_CONFIG.iceWidth - margin);
+            // 最初から横一直線になるとは限らないように、少しY座標をばらつかせる
             const y = -GAME_CONFIG.iceHeight - Math.random() * 40;
-            const isTarget = selectedIce.id === this.targetIce.id;
-
-            this.iceObjects.push(new IceCreamObject(x, y, selectedIce, isTarget));
+            const isTarget = (iceInfo.id === this.targetIce.id);
+            this.iceObjects.push(new IceCreamObject(x, y, iceInfo, isTarget));
         }
+    }
+
+    _endCurrentSet() {
+        this.currentSetActive = false;
+        this.spawnTimer = 0; // すぐに次のセットのディレイ計測を開始
+        // 念のため画面上の残存アイスを一掃し、次のセットを待つ
+        this.iceObjects.forEach(obj => {
+            if (!obj.exploding) obj.destroyed = true;
+        });
     }
 
     _roundClear() {
         this.round++;
         this.roundDestroyCount = 0;
+        this.currentSetActive = false; // セット終了
+
         this.currentFallSpeed = Math.min(
             GAME_CONFIG.baseFallSpeed + (this.round - 1) * GAME_CONFIG.speedIncrement,
             GAME_CONFIG.maxFallSpeed
         );
         this.iceObjects = [];
         this.beams = [];
-        this._selectTarget();
+        this._selectTarget(); // 次のラウンド用に新しいターゲットを設定
         this.ui.showRoundClear(this.round - 1, this.score, () => {
-            this.spawnTimer = this.spawnInterval; // すぐスポーン
+            this.spawnTimer = this.spawnInterval;
         });
     }
 
